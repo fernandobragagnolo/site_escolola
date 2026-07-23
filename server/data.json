@@ -1,0 +1,52 @@
+{
+  "users": [
+    {
+      "id": "c10606b6-273f-41b2-bb8c-2c747e81df44",
+      "email": "passocabragagnolo@gmail.com",
+      "createdAt": 1784526292162
+    },
+    {
+      "id": "be2b45ba-bcd6-4d02-87b9-88bebb72a7ab",
+      "email": "fernandopbragagnolo@aluno.emj.com.br",
+      "createdAt": 1784528995024
+    }
+  ],
+  "appointments": [
+    {
+      "id": "b53ecac8-fc02-4e8a-be99-a5755573c28b",
+      "userId": "c10606b6-273f-41b2-bb8c-2c747e81df44",
+      "studentEmail": "passocabragagnolo@gmail.com",
+      "date": "2026-07-20",
+      "time": "11:00",
+      "subject": "Matemática Teórica",
+      "professorEmail": null,
+      "status": "confirmed",
+      "createdAt": 1784564894516,
+      "meetLink": "https://meet.google.com/76e-6405-f6a"
+    },
+    {
+      "id": "89d53989-f2e6-4d44-9f27-7e7921a38257",
+      "userId": "c10606b6-273f-41b2-bb8c-2c747e81df44",
+      "studentEmail": "passocabragagnolo@gmail.com",
+      "date": "2026-07-21",
+      "time": "09:00",
+      "subject": "Matemática Teórica",
+      "professorEmail": null,
+      "status": "confirmed",
+      "createdAt": 1784585668517,
+      "meetLink": "https://meet.google.com/c4c-80e9-6df"
+    }
+  ],
+  "authTokens": [
+    {
+      "code": "655740",
+      "email": "teste@example.com",
+      "expiresAt": 1784528412022
+    },
+    {
+      "code": "377572",
+      "email": "passocabragagnolo@gmail.com",
+      "expiresAt": 1784529166475
+    }
+  ]
+}
