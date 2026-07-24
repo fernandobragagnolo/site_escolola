@@ -804,7 +804,7 @@ function init() {
       await loadUserAppointments();
       render('home');
     } else {
-      goTo('login');
+      goTo('home');
     }
   });
 }
