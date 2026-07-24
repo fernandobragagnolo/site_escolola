@@ -118,15 +118,8 @@ function renderLogin() {
         <label for="loginEmail">Email</label>
         <input id="loginEmail" type="email" placeholder="seu@email.com" />
       </div>
-      <button class="btn btn-primary btn-block" data-action="send-login-code">Enviar código de acesso</button>
-      <div class="divider">ou</div>
-      <p class="section-copy">Ao informar seu e‑mail, sua conta será criada/registrada automaticamente.</p>
-      ${state.loginLink ? `
-        <div class="note">
-          <p>Se não chegou ao email, use este link direto:</p>
-          <a href="${state.loginLink}">${state.loginLink}</a>
-        </div>
-      ` : ''}
+      <button class="btn btn-primary btn-block" data-action="login">Entrar</button>
+      
     </section>
   `;
 }
@@ -661,33 +654,26 @@ function handleActionClick(event) {
     return;
   }
 
-  if (action === 'send-login-code') {
-    const emailInput = document.getElementById('loginEmail');
-    const email = emailInput?.value.trim() || '';
-    if (!isValidEmail(email)) {
-      setAuthMessage('Informe um email válido para receber o link de acesso.');
-      return;
-    }
-    sendLoginCode(email).then(async (response) => {
-      if (response.success) {
-        if (response.user) {
-          state.user = response.user;
-          saveStoredUser();
-          setAuthMessage('Conta criada/entrada confirmada. Seus agendamentos foram carregados.');
-          await loadUserAppointments();
-          goTo('home');
-          return;
-        }
-        setAuthMessage('Operação concluída.');
-      } else {
-        setAuthMessage(response.message || 'Não foi possível processar o login.');
-      }
-    }).catch(() => {
-      setAuthMessage('Falha ao processar o login. Tente novamente mais tarde.');
-    });
+ if (action === 'login') {
+  const emailInput = document.getElementById('loginEmail');
+  const email = emailInput?.value.trim() || '';
+
+  if (!isValidEmail(email)) {
+    setAuthMessage('Informe um e-mail válido.');
     return;
   }
 
+  state.user = {
+    id: Date.now().toString(),
+    email: email
+  };
+
+  saveStoredUser();
+  state.authMessage = '';
+
+  goTo('materiais');
+  return;
+}
   if (action === 'logout') {
     clearStoredUser();
     state.authMessage = 'Você saiu da conta.';
