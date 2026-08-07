@@ -1,8 +1,8 @@
 import { APP_DATA } from './data.js?v=20260718-4';
 import { ROUTE_CONFIG } from './routes.js?v=20260718-4';
 import { fetchAvailableTimes } from './api.js?v=20260718-4';
-import { sendLoginCode, verifyWithCode, fetchUserAppointments, submitAppointment } from './auth.js';
-import { validateAppointmentData, isNotEmpty, isValidEmail } from './validations.js?v=20260718-4';
+import { sendLoginCode, verifyWithCode, fetchUserAppointments, submitAppointment, registerUser, loginUser } from './auth.js';
+import { validateAppointmentData, validateRegisterData, validateLoginData, isNotEmpty, isValidEmail } from './validations.js?v=20260718-4';
 import { renderStepper, renderLoading, renderAlert } from './ui.js?v=20260718-4';
 import { formatDateLabel, getTodayDate, parseDateStringAsLocal } from './calendar.js?v=20260718-4';
 import { buildAppointmentState, buildConfirmationData, resetAppointment } from './scheduler.js';
@@ -25,7 +25,9 @@ const state = {
   confirmation: null,
   appointments: [],
   user: null,
+  authMode: 'login', // 'login' | 'register'
   authMessage: '',
+  authStatusType: 'error', // 'error' | 'success'
   loginLink: '',
   loginToken: ''
 };
@@ -74,8 +76,9 @@ function clearStoredUser() {
   localStorage.removeItem('school_user');
 }
 
-function setAuthMessage(message, route = state.currentRoute) {
+function setAuthMessage(message, type = 'error', route = state.currentRoute) {
   state.authMessage = message;
+  state.authStatusType = type;
   render(route);
 }
 
@@ -95,9 +98,7 @@ async function verifyTokenFromUrl() {
   const url = new URL(window.location.href);
   const token = url.searchParams.get('token');
   if (!token) return;
-  // Auto-login via link is disabled to require explicit code entry for security.
-  setAuthMessage('Login por link está desabilitado. Abra seu email e cole o código aqui.', 'login');
-  // remove token from URL to avoid confusion
+  setAuthMessage('Login por link está desabilitado. Entre com seu e-mail e senha.', 'error', 'login');
   url.searchParams.delete('token');
   window.history.replaceState({}, document.title, url.toString());
 }
@@ -109,17 +110,77 @@ function removeAppointment(id) {
 }
 
 function renderLogin() {
+  const isRegister = state.authMode === 'register';
+  const errors = state.formErrors || {};
+
   return `
     <section class="section-card login-card" data-animate>
-      <h2 class="section-title">Entre com seu email</h2>
-      <p class="section-copy">Digite seu email para ver seus agendamentos e acessar as reuniões.</p>
-      ${state.authMessage ? `<p class="alert-message">${state.authMessage}</p>` : ''}
-      <div class="field-group">
-        <label for="loginEmail">Email</label>
-        <input id="loginEmail" type="email" placeholder="seu@email.com" />
+      <div class="auth-tabs">
+        <button class="auth-tab ${!isRegister ? 'active' : ''}" data-action="switch-auth-mode" data-mode="login">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+          </svg>
+          Entrar
+        </button>
+        <button class="auth-tab ${isRegister ? 'active' : ''}" data-action="switch-auth-mode" data-mode="register">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <line x1="20" y1="8" x2="20" y2="14"/>
+            <line x1="17" y1="11" x2="23" y2="11"/>
+          </svg>
+          Criar Conta
+        </button>
       </div>
-      <button class="btn btn-primary btn-block" data-action="login">Entrar</button>
-      
+
+      <h2 class="section-title">${isRegister ? 'Crie sua conta de estudante' : 'Bem-vindo de volta!'}</h2>
+      <p class="section-copy">
+        ${isRegister 
+          ? 'Preencha seus dados abaixo para se cadastrar e acessar todos os materiais e agendamentos.' 
+          : 'Digite seu e-mail e senha para acessar seus agendamentos e materiais de estudo.'}
+      </p>
+
+      ${state.authMessage ? `
+        <div class="alert-message alert-${state.authStatusType || 'error'}">
+          ${state.authStatusType === 'success' ? '✓ ' : '⚠️ '} ${state.authMessage}
+        </div>
+      ` : ''}
+
+      ${isRegister ? `
+        <div class="field-group">
+          <label for="regName">Nome Completo</label>
+          <input id="regName" type="text" placeholder="Seu nome completo" />
+          ${errors.name ? `<p class="field-error">${errors.name}</p>` : ''}
+        </div>
+        <div class="field-group">
+          <label for="regEmail">E-mail</label>
+          <input id="regEmail" type="email" placeholder="seu@email.com" />
+          ${errors.email ? `<p class="field-error">${errors.email}</p>` : ''}
+        </div>
+        <div class="field-group">
+          <label for="regPassword">Senha</label>
+          <input id="regPassword" type="password" placeholder="Mínimo de 6 caracteres" />
+          ${errors.password ? `<p class="field-error">${errors.password}</p>` : ''}
+        </div>
+        <div class="field-group">
+          <label for="regConfirmPassword">Confirmar Senha</label>
+          <input id="regConfirmPassword" type="password" placeholder="Repita a senha criada" />
+          ${errors.confirmPassword ? `<p class="field-error">${errors.confirmPassword}</p>` : ''}
+        </div>
+        <button class="btn btn-primary btn-block" data-action="submit-register">Criar Minha Conta</button>
+      ` : `
+        <div class="field-group">
+          <label for="loginEmail">E-mail</label>
+          <input id="loginEmail" type="email" placeholder="seu@email.com" />
+          ${errors.email ? `<p class="field-error">${errors.email}</p>` : ''}
+        </div>
+        <div class="field-group">
+          <label for="loginPassword">Senha</label>
+          <input id="loginPassword" type="password" placeholder="Sua senha" />
+          ${errors.password ? `<p class="field-error">${errors.password}</p>` : ''}
+        </div>
+        <button class="btn btn-primary btn-block" data-action="submit-login">Entrar na Conta</button>
+      `}
     </section>
   `;
 }
@@ -136,17 +197,6 @@ function renderHome() {
       <h1 class="hero-title">Conquiste seu próximo desafio com apoio inteligente.</h1>
       <p class="hero-text">Agende suas aulas em poucos passos e receba confirmações automáticas.</p>
     </section>
-
-    ${state.user ? `
-      <section class="section-card" data-animate>
-        <div class="section-header">
-          <div>
-            <p class="section-copy">Logado como <strong>${state.user.email}</strong></p>
-          </div>
-          <button class="btn btn-secondary btn-small" data-action="logout">Sair</button>
-        </div>
-      </section>
-    ` : ''}
 
     <section class="grid-home" data-animate>
       <article class="choice-card">
@@ -193,7 +243,6 @@ function renderSubjectSelection() {
       </button>
       <div class="progress-bar"><div class="progress-fill" style="width: 20%"></div></div>
       <div class="progress-label">
-        <span>Passo 1 de 5</span>
         <strong>Escolha a matéria</strong>
       </div>
       <h2 class="section-title">Escolha a matéria</h2>
@@ -224,7 +273,6 @@ function renderMaterials() {
       </button>
       <div class="progress-bar"><div class="progress-fill" style="width: 20%"></div></div>
       <div class="progress-label">
-        <span>Passo 1 de 2</span>
         <strong>Materiais de preparação</strong>
       </div>
       <h2 class="section-title">Selecione o material</h2>
@@ -255,7 +303,6 @@ function renderMiniProvas() {
       </button>
       <div class="progress-bar"><div class="progress-fill" style="width: 40%"></div></div>
       <div class="progress-label">
-        <span>Passo 2 de 3</span>
         <strong>Escolha o tipo de prova</strong>
       </div>
       <h2 class="section-title">Tipo de mini prova</h2>
@@ -304,7 +351,6 @@ function renderSubjectSelectionForMaterials() {
       </button>
       <div class="progress-bar"><div class="progress-fill" style="width: 80%"></div></div>
       <div class="progress-label">
-        <span>Passo 3 de 3</span>
         <strong>${title}</strong>
       </div>
       <h2 class="section-title">${title}</h2>
@@ -495,6 +541,34 @@ function render(route) {
   appContainer.innerHTML = html;
   document.title = `${config.title} · ${APP_DATA.brandName}`;
 
+  const navAuthLink = document.getElementById('navAuthLink');
+  if (navAuthLink) {
+    if (state.user) {
+      const nameOrEmail = state.user.name || state.user.email.split('@')[0];
+      const initial = nameOrEmail[0].toUpperCase();
+      navAuthLink.className = 'user-topbar-wrapper';
+      navAuthLink.innerHTML = `
+        <span class="user-profile-badge" title="${state.user.email}">
+          <span class="user-avatar">${initial}</span>
+          <span class="user-name">${nameOrEmail}</span>
+        </span>
+        <button class="btn-logout-icon" data-action="logout" title="Sair da conta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sair
+        </button>
+      `;
+      navAuthLink.removeAttribute('data-route');
+    } else {
+      navAuthLink.className = 'nav-auth-btn';
+      navAuthLink.innerHTML = 'Entrar / Cadastrar';
+      navAuthLink.setAttribute('data-route', 'login');
+    }
+  }
+
   if (route === 'agendamentoDados') {
     requestAnimationFrame(() => {
       const input = document.getElementById('appointmentName');
@@ -585,7 +659,9 @@ function handleRouteClick(event) {
   const route = element.dataset.route;
   if (route) {
     if (route === 'agendamento' && !state.user) {
-      setAuthMessage('Faça login com seu email antes de agendar uma aula.');
+      state.authMessage = 'Faça login com seu email antes de agendar uma aula.';
+      state.authStatusType = 'error';
+      goTo('login');
       return;
     }
     goTo(route);
@@ -654,29 +730,85 @@ function handleActionClick(event) {
     return;
   }
 
- if (action === 'login') {
-  const emailInput = document.getElementById('loginEmail');
-  const email = emailInput?.value.trim() || '';
-
-  if (!isValidEmail(email)) {
-    setAuthMessage('Informe um e-mail válido.');
+  if (action === 'switch-auth-mode') {
+    state.authMode = element.dataset.mode || 'login';
+    state.authMessage = '';
+    state.formErrors = {};
+    render('login');
     return;
   }
 
-  state.user = {
-    id: Date.now().toString(),
-    email: email
-  };
+  if (action === 'submit-login') {
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
 
-  saveStoredUser();
-  state.authMessage = '';
+    const credentials = {
+      email: emailInput?.value.trim() || '',
+      password: passwordInput?.value || ''
+    };
 
-  goTo('materiais');
-  return;
-}
+    state.formErrors = validateLoginData(credentials);
+    if (Object.keys(state.formErrors).length > 0) {
+      render('login');
+      return;
+    }
+
+    showLoading();
+    loginUser(credentials).then(async (res) => {
+      if (res && res.success) {
+        state.user = res.user;
+        saveStoredUser();
+        state.authMessage = '';
+        state.formErrors = {};
+        await loadUserAppointments();
+        goTo('home');
+      } else {
+        setAuthMessage(res?.message || 'Falha ao realizar login. Verifique seus dados.', 'error', 'login');
+      }
+    });
+    return;
+  }
+
+  if (action === 'submit-register') {
+    const nameInput = document.getElementById('regName');
+    const emailInput = document.getElementById('regEmail');
+    const passwordInput = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirmPassword');
+
+    const regData = {
+      name: nameInput?.value.trim() || '',
+      email: emailInput?.value.trim() || '',
+      password: passwordInput?.value || '',
+      confirmPassword: confirmInput?.value || ''
+    };
+
+    state.formErrors = validateRegisterData(regData);
+    if (Object.keys(state.formErrors).length > 0) {
+      render('login');
+      return;
+    }
+
+    showLoading();
+    registerUser(regData).then(async (res) => {
+      if (res && res.success) {
+        state.user = res.user;
+        saveStoredUser();
+        state.authMessage = 'Conta criada com sucesso! Seja bem-vindo(a).';
+        state.authStatusType = 'success';
+        state.formErrors = {};
+        await loadUserAppointments();
+        goTo('home');
+      } else {
+        setAuthMessage(res?.message || 'Erro ao criar conta.', 'error', 'login');
+      }
+    });
+    return;
+  }
+
   if (action === 'logout') {
     clearStoredUser();
-    state.authMessage = 'Você saiu da conta.';
+    state.authMessage = 'Você saiu da sua conta.';
+    state.authStatusType = 'success';
     render('home');
     return;
   }

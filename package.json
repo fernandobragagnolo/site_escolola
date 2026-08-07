@@ -1,0 +1,10 @@
+{
+  "name": "site-escola",
+  "version": "1.0.0",
+  "description": "Site para agendamento de aulas e materiais de estudo",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  }
+}

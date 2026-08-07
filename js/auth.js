@@ -33,6 +33,59 @@ async function fetchWithFallback(path, options = {}, params = {}) {
   }
 }
 
+export async function registerUser({ name, email, password }) {
+  const result = await fetchWithFallback('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password })
+  });
+
+  if (result && result.success) return result;
+
+  // Fallback caso a API offline
+  try {
+    const rawUsers = localStorage.getItem('school_users_db') || '[]';
+    const users = JSON.parse(rawUsers);
+    const existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      return { success: false, message: 'Este e-mail já está cadastrado.' };
+    }
+    const newUser = { id: 'usr_' + Date.now(), name, email, createdAt: Date.now() };
+    users.push({ ...newUser, password });
+    localStorage.setItem('school_users_db', JSON.stringify(users));
+    return { success: true, user: newUser, message: 'Conta criada com sucesso!' };
+  } catch (e) {
+    return result;
+  }
+}
+
+export async function loginUser({ email, password }) {
+  const result = await fetchWithFallback('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (result && result.success) return result;
+
+  // Fallback se API offline ou 404
+  try {
+    const rawUsers = localStorage.getItem('school_users_db') || '[]';
+    const users = JSON.parse(rawUsers);
+    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return { success: false, message: 'Usuário não encontrado. Cadastre-se primeiro.' };
+    }
+    if (user.password && user.password !== password) {
+      return { success: false, message: 'Senha incorreta.' };
+    }
+    const { password: _, ...cleanUser } = user;
+    return { success: true, user: cleanUser, message: 'Login realizado com sucesso!' };
+  } catch (e) {
+    return result;
+  }
+}
+
 export async function sendLoginCode(email) {
   return fetchWithFallback('/api/auth/send-code', {
     method: 'POST',

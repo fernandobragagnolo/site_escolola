@@ -47,6 +47,54 @@ function getTransport() {
   });
 }
 
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Todos os campos (nome, email e senha) são obrigatórios.' });
+  }
+
+  const data = safeReadData();
+  const existingUser = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  if (existingUser) {
+    return res.status(400).json({ success: false, message: 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.' });
+  }
+
+  const newUser = {
+    id: uuidv4(),
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password: password, // Para demonstração no projeto escolar
+    createdAt: Date.now()
+  };
+
+  data.users.push(newUser);
+  safeWriteData(data);
+
+  const { password: _, ...userWithoutPassword } = newUser;
+  return res.json({ success: true, user: userWithoutPassword, message: 'Conta criada com sucesso!' });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'E-mail e senha são obrigatórios.' });
+  }
+
+  const data = safeReadData();
+  const user = data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Usuário não encontrado. Crie uma conta primeiro.' });
+  }
+
+  if (user.password && user.password !== password) {
+    return res.status(401).json({ success: false, message: 'Senha incorreta. Verifique suas credenciais.' });
+  }
+
+  const { password: _, ...userWithoutPassword } = user;
+  return res.json({ success: true, user: userWithoutPassword, message: 'Login realizado com sucesso!' });
+});
+
 app.post('/api/auth/send-code', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
