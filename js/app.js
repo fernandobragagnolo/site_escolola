@@ -1,12 +1,12 @@
 import { APP_DATA } from './data.js?v=20260718-4';
 import { ROUTE_CONFIG } from './routes.js?v=20260718-4';
 import { fetchAvailableTimes } from './api.js?v=20260718-4';
-import { sendLoginCode, verifyWithCode, fetchUserAppointments, submitAppointment, registerUser, loginUser } from './auth.js';
+import { sendLoginCode, verifyWithCode, fetchUserAppointments, submitAppointment, registerUser, loginUser } from './auth.js?v=20260807-2';
 import { validateAppointmentData, validateRegisterData, validateLoginData, isNotEmpty, isValidEmail } from './validations.js?v=20260718-4';
 import { renderStepper, renderLoading, renderAlert } from './ui.js?v=20260718-4';
 import { formatDateLabel, getTodayDate, parseDateStringAsLocal } from './calendar.js?v=20260718-4';
-import { buildAppointmentState, buildConfirmationData, resetAppointment } from './scheduler.js';
-import { openWhatsApp } from './whatsapp.js';
+import { buildAppointmentState, buildConfirmationData, resetAppointment } from './scheduler.js?v=20260807-2';
+import { openWhatsApp } from './whatsapp.js?v=20260807-2';
 
 const state = {
   currentRoute: 'home',
